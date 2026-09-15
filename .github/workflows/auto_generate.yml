@@ -1,0 +1,29 @@
+name: Auto Generate Topics Folders
+
+on:
+  workflow_dispatch: # 👈 Isse aap jab chahein GitHub website se ek button daba kar manual run kar sakte hain
+  schedule:
+    - cron: '0 0 * * *' # 👈 (Optional) Yeh har din raat 12:00 baje (UTC) auto-run karega
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install Libraries
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas openpyxl PyGithub
+
+      - name: 🚀 Run Folder Generator Script
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }} # Yahan se token securely Python ko milega
+        run: python generate_folders.py
