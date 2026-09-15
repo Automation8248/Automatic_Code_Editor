@@ -3,12 +3,11 @@ import time
 import requests
 import io
 import pandas as pd
-from github import Github, GithubException
+from github import Github, GithubException, Auth
 
 # ==========================================
 # ⚙️ CONFIGURATION SETTINGS
 # ==========================================
-# Token ab GitHub Secrets se aayega
 GITHUB_TOKEN = os.getenv("GH_TOKEN") 
 REPO_NAME = "Automation8248/Faceless-fact-yt"
 EXCEL_URL = "https://files.catbox.moe/a1eba7.xlsx"
@@ -21,7 +20,9 @@ def create_github_files():
         return
 
     try:
-        g = Github(GITHUB_TOKEN)
+        # Warning hatane ke liye naya Auth format
+        auth = Auth.Token(GITHUB_TOKEN)
+        g = Github(auth=auth)
         repo = g.get_repo(REPO_NAME)
         print(f"✅ Connected to repository: {REPO_NAME}")
     except Exception as e:
