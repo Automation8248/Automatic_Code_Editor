@@ -26,4 +26,4 @@ jobs:
       - name: 🚀 Run Folder Generator Script
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }} # Yahan se token securely Python ko milega
-        run: python generate_folders.py
+        run: python main.py
