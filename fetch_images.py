@@ -19,7 +19,8 @@ except ImportError:
 GITHUB_TOKEN = os.getenv("GH_TOKEN") 
 REPO_NAME = "Automation8248/Faceless-fact-yt"
 API_KEY = "ansh"
-API_BASE_URL = "https://ansh-apis.is-dev.org/api/printrest"
+# Naya API URL update kar diya gaya hai
+API_BASE_URL = "https://ansh-apis.is-dev.org/api/nano" 
 MAX_API_CALLS = 200      # 200 calls daily limit
 MAX_IMAGES_PER_CAT = 10  # Har folder me maximum 10 images
 TRACKING_FILE_PATH = "tracking.json"
@@ -79,7 +80,9 @@ def fetch_and_upload_images():
 
         while images_done < MAX_IMAGES_PER_CAT and api_calls_made < MAX_API_CALLS:
             search_query = f"{category} {images_done + 1}"
-            api_url = f"{API_BASE_URL}?key={API_KEY}&search={requests.utils.quote(search_query)}"
+            
+            # Yahan 'search=' ki jagah 'prompt=' kar diya gaya hai
+            api_url = f"{API_BASE_URL}?key={API_KEY}&prompt={requests.utils.quote(search_query)}"
             
             print(f"  └── 📡 Requesting API for image {images_done + 1} (Waiting for generation...)")
             
@@ -92,9 +95,8 @@ def fetch_and_upload_images():
                     json_data = response.json()
                     
                     # 2. JSON se URL extract karna
-                    # Assuming format: {"success": true, "url": "https://..."}
                     img_url = json_data.get("url")
-                    is_success = json_data.get("success", True) # Default true in case success param missing
+                    is_success = json_data.get("success", True) 
                     
                     if img_url and is_success:
                         print(f"      ✅ JSON received! Image URL: {img_url}")
