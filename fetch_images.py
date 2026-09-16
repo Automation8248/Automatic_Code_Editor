@@ -22,7 +22,7 @@ API_KEY = "ansh"
 # Naya API URL update kar diya gaya hai
 API_BASE_URL = "https://ansh-apis.is-dev.org/api/nano" 
 MAX_API_CALLS = 200      # 200 calls daily limit
-MAX_IMAGES_PER_CAT = 10  # Har folder me maximum 10 images
+MAX_IMAGES_PER_CAT = 5  # Har folder me maximum 5 images
 TRACKING_FILE_PATH = "tracking.json"
 
 def get_tracking_data(repo):
