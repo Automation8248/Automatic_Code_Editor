@@ -1,0 +1,29 @@
+name: Upload Models to MEGA
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'filelink.txt'
+
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install requests mega.py tenacity
+
+      - name: Run Script
+        env:
+          MEGA_EMAIL: ${{ secrets.MEGA_EMAIL }}
+          MEGA_PASSWORD: ${{ secrets.MEGA_PASSWORD }}
+        run: python upload_mega.py
