@@ -1,2 +1,2 @@
-https://huggingface.co/pramodlohra/Qween3_4B_thinking_finetune/blob/main/qwen3-4b-thinking-2507.Q4_K_M.gguf
+https://huggingface.co/pramodlohra/Qween3_4B_thinking_finetune/resolve/main/qwen3-4b-thinking-2507.Q4_K_M.gguf
 https://github.com/mozilla-ai/llamafile/releases/download/0.10.6/llamafile-0.10.6
