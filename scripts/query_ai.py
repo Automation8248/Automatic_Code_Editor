@@ -6,29 +6,28 @@ user_prompt = sys.argv[1] if len(sys.argv) > 1 else "Hello, please confirm your 
 LOCAL_AI_URL = "http://127.0.0.1:8080/v1/chat/completions"
 
 print("--- AI Server Status Check ---")
-print("Waiting for AI server to load into RAM. This can take 5-10 minutes on a free GitHub runner...")
+print("Waiting for AI server to load into RAM (Max 2 minutes)...")
 
-# Real User Logic: Ek normal user ki tarah hum patience rakhenge. 
-# 120 baar check karega (har 5 second mein) = Total 10 Minutes wait time.
+# 2 minutes wait logic: 24 loops * 5 seconds = 120 seconds
 server_ready = False
-for i in range(120):
+for i in range(24):
     try:
-        # Har 5 second me server ko 'ping' karke dekhega ki on hua ya nahi
+        # Har 5 second me server ko ping karega
         requests.get("http://127.0.0.1:8080/", timeout=2)
         server_ready = True
         print("\n[SUCCESS] AI Server is UP and running!")
         break
     except requests.exceptions.ConnectionError:
-        print(f"Server is still loading... Waiting ({i+1}/120)")
+        print(f"Server is loading... Checking ({i+1}/24)")
         time.sleep(5)
 
 if not server_ready:
-    print("\n[ERROR] AI server did not start even after 10 minutes. Llamafile crashed or RAM is full.")
+    print("\n[ERROR] AI server did not start within 2 minutes. Llamafile crashed or RAM is full.")
     sys.exit(1)
 
 payload = {
     "messages": [
-        {"role": "system", "content": "You are a highly capable AI assistant running locally on a GitHub Windows runner."},
+        {"role": "system", "content": "You are a fast and reliable AI assistant running locally."},
         {"role": "user", "content": user_prompt}
     ],
     "temperature": 0.7,
@@ -36,11 +35,11 @@ payload = {
 }
 
 print(f"\nSending prompt to Local AI: '{user_prompt}'")
-print("Waiting for AI to generate response (this might take a few minutes)...")
+print("Waiting for AI response...")
 
 try:
-    # Timeout 15 minute (900 seconds) kar diya hai taaki AI aaram se lamba answer likh sake
-    response = requests.post(LOCAL_AI_URL, json=payload, timeout=900)
+    # Timeout 180 seconds (3 minutes) kar diya hai kyunki ye fast work karta hai
+    response = requests.post(LOCAL_AI_URL, json=payload, timeout=180)
     
     if response.status_code == 200:
         output_text = response.json()["choices"][0]["message"]["content"]
