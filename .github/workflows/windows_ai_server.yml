@@ -1,7 +1,6 @@
-name: Windows Master AI Server (Mega + Live Chat + Record)
+name: Windows Master AI Server (HF Python + Live Chat + Record)
 
 on:
-  # मैनुअल ट्रिगर (आप खुद बटन दबाकर इसे चला सकते हैं)
   workflow_dispatch:
     inputs:
       record_screen:
@@ -20,7 +19,6 @@ on:
         type: string
         default: 'Hello, please confirm you are working.'
 
-  # दूसरे रिपॉजिटरी से कमांड रिसीव करने के लिए (Cross-Repo Trigger)
   repository_dispatch:
     types: [run-cross-repo-ai]
 
@@ -37,6 +35,9 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Install Python Libraries
+        run: pip install huggingface_hub requests
+
       # ----- 1. SCREEN RECORDING -----
       - name: Start Screen Recording (If ON)
         if: ${{ github.event.inputs.record_screen == 'true' || github.event.client_payload.record_screen == 'true' }}
@@ -45,24 +46,17 @@ jobs:
           choco install ffmpeg -y
           Start-Process -NoNewWindow -FilePath "ffmpeg" -ArgumentList "-f gdigrab -framerate 15 -i desktop -c:v libx264 -preset ultrafast screen_record.mp4"
 
-      # ----- 2. SECURE MEGA LOGIN & DOWNLOAD -----
-      - name: Secure Login to Mega & Download Files
+      # ----- 2. HUGGING FACE PYTHON DOWNLOAD -----
+      - name: Download Files via Python Script
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          echo "Installing MegaCMD..."
-          choco install megacmd -y
-          
-          # GitHub Secrets से सुरक्षित लॉगिन 
-          mega-login "${{ secrets.MEGA_EMAIL }}" "${{ secrets.MEGA_PASSWORD }}"
-          
-          echo "Downloading Llamafile and GGUF Model from Mega..."
-          # ध्यान दें: यहाँ अपनी असली Mega.io लिंक डालें
-          mega-get "https://mega.nz/file/YOUR_EXE_LINK_HERE"
-          mega-get "https://mega.nz/file/YOUR_GGUF_LINK_HERE"
+          echo "Running Python download script from scripts folder..."
+          python scripts/download_hf.py
 
       # ----- 3. BAT FILE CREATION & EXECUTION (EXACT FILE NAME) -----
       - name: Create and Run start.bat
         run: |
-          # एकदम सटीक फाइल नेम: .\llamafile-0.10.6.exe
           echo ".\llamafile-0.10.6.exe --server --model qwen3-4b-thinking-2507.Q4_K_M.gguf --host 0.0.0.0 --port 8080 --nobrowser" > start.bat
           
           echo "Starting Local AI Server..."
@@ -87,15 +81,13 @@ jobs:
           echo "========================================================="
           echo "आप इस लिंक पर क्लिक करके AI से बात कर सकते हैं। सर्वर 1 घंटे तक चालू रहेगा।"
           
-          # 1 घंटे के लिए सर्वर चालू रखना
           Start-Sleep -Seconds 3600
 
       # ----- 5. AUTOMATION QUERY (Run only if Live Chat is OFF) -----
       - name: Query AI For Automation
         if: ${{ github.event.inputs.live_chat != 'true' }}
         run: |
-          pip install requests
-          python query_ai.py "${{ github.event.inputs.prompt || github.event.client_payload.prompt }}"
+          python scripts/query_ai.py "${{ github.event.inputs.prompt || github.event.client_payload.prompt }}"
 
       # ----- 6. STOP RECORDING & SAVE -----
       - name: Stop Screen Recording
