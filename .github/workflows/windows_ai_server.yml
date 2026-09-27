@@ -1,4 +1,4 @@
-name: Windows Master AI Server (HF Python + Live Chat + Record)
+name: Windows Master AI Server
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ on:
         description: 'AI के लिए प्रॉम्प्ट/कमांड'
         required: false
         type: string
-        default: 'Hello, please confirm you are working.'
+        default: 'Hello, confirm your status.'
 
   repository_dispatch:
     types: [run-cross-repo-ai]
@@ -42,23 +42,19 @@ jobs:
       - name: Start Screen Recording (If ON)
         if: ${{ github.event.inputs.record_screen == 'true' || github.event.client_payload.record_screen == 'true' }}
         run: |
-          echo "Installing FFmpeg for Screen Recording..."
           choco install ffmpeg -y
           Start-Process -NoNewWindow -FilePath "ffmpeg" -ArgumentList "-f gdigrab -framerate 15 -i desktop -c:v libx264 -preset ultrafast screen_record.mp4"
 
-      # ----- 2. HUGGING FACE PYTHON DOWNLOAD -----
-      - name: Download Files via Python Script
+      # ----- 2. DOWNLOAD, RENAME & CREATE BAT VIA PYTHON -----
+      - name: Run Python Download & Setup Script
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          echo "Running Python download script from scripts folder..."
           python scripts/download_hf.py
 
-      # ----- 3. BAT FILE CREATION & EXECUTION (EXACT FILE NAME) -----
-      - name: Create and Run start.bat
+      # ----- 3. START AI SERVER -----
+      - name: Run start.bat
         run: |
-          echo ".\llamafile-0.10.6.exe --server --model qwen3-4b-thinking-2507.Q4_K_M.gguf --host 0.0.0.0 --port 8080 --nobrowser" > start.bat
-          
           echo "Starting Local AI Server..."
           Start-Process -FilePath "start.bat" -NoNewWindow
           
@@ -69,21 +65,17 @@ jobs:
       - name: Create Live Chat Link (If ON)
         if: ${{ github.event.inputs.live_chat == 'true' }}
         run: |
-          echo "Installing Cloudflare Tunnel..."
           choco install cloudflared -y
-          
           Start-Process -NoNewWindow -FilePath "cloudflared" -ArgumentList "tunnel --url http://127.0.0.1:8080" -RedirectStandardError "tunnel_log.txt"
           Start-Sleep -Seconds 10
           
           echo "========================================================="
-          echo "🟢 आपका LIVE CHAT लिंक तैयार है (ChatGPT जैसा UI):"
+          echo "🟢 आपका LIVE CHAT लिंक:"
           Select-String -Path tunnel_log.txt -Pattern "https://.*\.trycloudflare\.com" | Select-Object -First 1
           echo "========================================================="
-          echo "आप इस लिंक पर क्लिक करके AI से बात कर सकते हैं। सर्वर 1 घंटे तक चालू रहेगा।"
-          
           Start-Sleep -Seconds 3600
 
-      # ----- 5. AUTOMATION QUERY (Run only if Live Chat is OFF) -----
+      # ----- 5. AUTOMATION QUERY -----
       - name: Query AI For Automation
         if: ${{ github.event.inputs.live_chat != 'true' }}
         run: |
@@ -93,7 +85,7 @@ jobs:
       - name: Stop Screen Recording
         if: always() 
         run: |
-          taskkill /IM ffmpeg.exe /F || echo "Recording was OFF or already stopped."
+          taskkill /IM ffmpeg.exe /F || echo "Recording was OFF"
           Start-Sleep -Seconds 5
 
       # ----- 7. UPLOAD ARTIFACTS -----
