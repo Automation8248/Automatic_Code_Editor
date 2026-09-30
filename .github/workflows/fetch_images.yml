@@ -8,7 +8,7 @@ on:
 jobs:
   download-and-save-images:
     runs-on: ubuntu-latest
-    timeout-minutes: 60 # Execution time limit kam karke 60 mins kar diya hai
+    timeout-minutes: 90 # 1.5 ghante max execution time
 
     steps:
       - name: 📥 Checkout Repository
