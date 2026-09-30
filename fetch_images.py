@@ -18,11 +18,12 @@ except ImportError:
 # ==========================================
 GITHUB_TOKEN = os.getenv("GH_TOKEN") 
 REPO_NAME = "Automation8248/Faceless-fact-yt"
-API_KEY = "ansh"
-# Naya API URL update kar diya gaya hai
-API_BASE_URL = "https://ansh-apis.is-dev.org/api/nano" 
-MAX_API_CALLS = 200      # 200 calls daily limit
-MAX_IMAGES_PER_CAT = 5  # Har folder me maximum 5 images
+
+# Naya Website/API Setup (Agar exact api path kuch aur hai, toh yaha update kar sakte hain)
+API_BASE_URL = "https://shreevibes.vercel.app/api/search" 
+MAX_API_CALLS = 200      # 200 API calls limit per day
+MAX_IMAGES_PER_CAT = 5   # Ek topic me kitni images chahiye
+
 TRACKING_FILE_PATH = "tracking.json"
 
 def get_tracking_data(repo):
@@ -43,8 +44,27 @@ def update_tracking_data(repo, tracking_dict, sha):
     else:
         repo.create_file(TRACKING_FILE_PATH, "Auto: Created image tracking", content, branch="main")
 
+def extract_urls_from_json(data):
+    """Smartly JSON se image URLs nikalta hai, format chahe jo ho"""
+    if isinstance(data, list):
+        return [item for item in data if isinstance(item, str) and item.startswith('http')]
+    elif isinstance(data, dict):
+        # Common keys jisme array of images hota hai
+        for key in ['url', 'urls', 'images', 'data', 'results']:
+            if key in data and isinstance(data[key], list) and len(data[key]) > 0:
+                if isinstance(data[key][0], str):
+                    return data[key]
+                elif isinstance(data[key][0], dict):
+                    # Agar dictionary ke andar hai toh 'url' ya 'image' nikalega
+                    return [item.get('url', item.get('image', item.get('src'))) for item in data[key] if isinstance(item, dict)]
+        
+        # Agar single URL string form me de diya
+        if 'url' in data and isinstance(data['url'], str):
+            return [data['url']]
+    return []
+
 def fetch_and_upload_images():
-    print("🚀 Starting Image Fetcher (Handles 30s Generation Time)...")
+    print("🚀 Starting Fast Search Image Fetcher...")
     
     if not GITHUB_TOKEN:
         print("❌ Error: GH_TOKEN is missing in environment!")
@@ -67,8 +87,6 @@ def fetch_and_upload_images():
 
         topic = str(item['Topic']).strip()
         category = str(item['Category']).strip()
-        
-        # Tracking key e.g., "World Records_Tallest Person"
         track_key = f"{topic}_{category}"
         images_done = tracking_data.get(track_key, 0)
         
@@ -76,37 +94,42 @@ def fetch_and_upload_images():
             print(f"⏭️ Skipped: {topic} -> {category} (Already has {MAX_IMAGES_PER_CAT} images)")
             continue
             
-        print(f"⏳ Processing: {topic} -> {category} (Need {MAX_IMAGES_PER_CAT - images_done} more images)")
+        print(f"⏳ Processing: {topic} -> {category}")
 
-        while images_done < MAX_IMAGES_PER_CAT and api_calls_made < MAX_API_CALLS:
-            search_query = f"{category} {images_done + 1}"
+        # Search Query parameters
+        api_url = f"{API_BASE_URL}?q={requests.utils.quote(category)}"
+        print(f"  └── 📡 Searching API for: '{category}'")
+        
+        api_calls_made += 1
+        try:
+            # 1. Sirf ek baar hit karega (Search)
+            response = requests.get(api_url, timeout=30)
             
-            # Yahan 'search=' ki jagah 'prompt=' kar diya gaya hai
-            api_url = f"{API_BASE_URL}?key={API_KEY}&prompt={requests.utils.quote(search_query)}"
-            
-            print(f"  └── 📡 Requesting API for image {images_done + 1} (Waiting for generation...)")
-            
-            api_calls_made += 1
-            try:
-                # 1. API Call with 120s timeout (Taaki 30 sec lagne par crash na ho)
-                response = requests.get(api_url, timeout=120)
+            if response.status_code == 200:
+                json_data = response.json()
                 
-                if response.status_code == 200:
-                    json_data = response.json()
+                # 2. JSON se Top images nikalna
+                img_urls = extract_urls_from_json(json_data)
+                
+                if img_urls:
+                    # Sirf utni hi images lega jitni bachi hain (e.g., pehle se 2 done hain toh 3 aur lega)
+                    needed_images = MAX_IMAGES_PER_CAT - images_done
+                    urls_to_download = img_urls[:needed_images]
                     
-                    # 2. JSON se URL extract karna
-                    img_url = json_data.get("url")
-                    is_success = json_data.get("success", True) 
+                    print(f"      ✅ Found {len(img_urls)} images. Downloading {len(urls_to_download)} new images...")
                     
-                    if img_url and is_success:
-                        print(f"      ✅ JSON received! Image URL: {img_url}")
+                    # 3. Ek ek karke images download aur save karega
+                    for idx, img_url in enumerate(urls_to_download):
                         
-                        # 3. Image download karna
-                        img_response = requests.get(img_url, timeout=60)
+                        if not img_url:
+                            continue
+                            
+                        # Download image
+                        img_response = requests.get(img_url, timeout=30)
                         if img_response.status_code == 200:
                             img_content = img_response.content
                             
-                            # 4. GitHub me save karna
+                            # GitHub me save karna (Path: Topics/Topic/Category/images/1.jpg)
                             img_filename = f"{images_done + 1}.jpg"
                             github_path = f"Topics/{topic}/{category}/images/{img_filename}"
                             
@@ -117,7 +140,7 @@ def fetch_and_upload_images():
                                     content=img_content,
                                     branch="main"
                                 )
-                                print(f"      📥 Saved permanently to: {github_path}")
+                                print(f"      📥 Saved: {github_path}")
                                 
                                 # Progress increase karna
                                 images_done += 1
@@ -125,27 +148,30 @@ def fetch_and_upload_images():
                                 
                             except GithubException as e:
                                 if e.status == 422:
-                                    print("      ⚠️ File already exists. Skipping count.")
+                                    print(f"      ⚠️ {img_filename} already exists. Skipping count.")
                                     images_done += 1
                                     tracking_data[track_key] = images_done
                                 else:
                                     print(f"      ❌ Github Upload Error: {e.data.get('message')}")
                         else:
-                            print("      ❌ Image URL khul nahi raha hai (Download failed).")
-                    else:
-                        print(f"      ❌ API JSON failed or URL missing: {json_data}")
+                            print(f"      ❌ Image URL load nahi hua: {img_url}")
+                        
+                        # Thoda delay taaki GitHub API overload na ho
+                        time.sleep(1) 
                 else:
-                    print(f"      ❌ API HTTP Error: {response.status_code}")
-                    
-            except requests.exceptions.Timeout:
-                print("      ❌ Timeout Error: API ne 120 seconds se zyada time le liya.")
-            except Exception as e:
-                print(f"      ❌ Unexpected Error: {e}")
-            
-            # Har image banne ke baad 2 second ruko taaki API server overload na ho
-            time.sleep(2)
+                    print(f"      ❌ API JSON se URLs extract nahi ho paye: {json_data}")
+            else:
+                print(f"      ❌ API HTTP Error: {response.status_code}")
+                
+        except requests.exceptions.Timeout:
+            print("      ❌ Timeout Error: Search API is taking too long.")
+        except Exception as e:
+            print(f"      ❌ Unexpected Error: {e}")
+        
+        # Ek topic pura hone ke baad thoda rest
+        time.sleep(2)
 
-    # 5. Save the final count in tracking.json so it remembers tomorrow
+    # 4. Save progress
     print("\n💾 Saving tracking progress to GitHub...")
     update_tracking_data(repo, tracking_data, tracking_sha)
     print("🎉 ALL TASKS FINISHED!")
