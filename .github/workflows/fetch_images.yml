@@ -1,15 +1,14 @@
 name: 🖼️ Auto Fetch & Save Images
 
 on:
-  workflow_dispatch: # Button se run karne ke liye
+  workflow_dispatch: 
   schedule:
-    - cron: '0 0 * * *' # Daily at 12:00 AM UTC run hoga
+    - cron: '0 0 * * *' 
 
 jobs:
   download-and-save-images:
     runs-on: ubuntu-latest
-    # Timeout 4 hours ka set kiya hai taaki agar API time le, toh Github Action fail na ho
-    timeout-minutes: 240 
+    timeout-minutes: 60 # Execution time limit kam karke 60 mins kar diya hai
 
     steps:
       - name: 📥 Checkout Repository
